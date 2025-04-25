@@ -11,5 +11,5 @@ void BtSend(const char* message);
 void SetupAccel();
 void ReadAccel();
 void SetupCapt();
-void LoopCapt();
+float ReadCapt(const char * sensor);
 #endif

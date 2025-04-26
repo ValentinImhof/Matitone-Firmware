@@ -47,7 +47,13 @@ void BtLoop() {
 void BtSend(const char* message) {
   // Envoi de données SEULEMENT si connecté
   static unsigned long lastSend = 0;
-  if (connected && millis() - lastSend > 2000) {
+  if (connected && millis() - lastSend > 1000) {
+    // Vérification de la longueur du message (20 caractères max)
+    if(strlen(message) > 20) {
+      Serial.println("Erreur : message trop long !");
+      return;
+    }
+    
     const char* buffer = message;
     txCharacteristic.writeValue(buffer, strlen(buffer));
     Serial.println("Message envoyé");
@@ -56,6 +62,5 @@ void BtSend(const char* message) {
   // Si pas connecté, affiche un message d'erreur
   else if (!connected) {
     Serial.println("Erreur : pas de connexion BLE !");
-    printf("Erreur : pas de connexion BLE !\n");
   }
 }

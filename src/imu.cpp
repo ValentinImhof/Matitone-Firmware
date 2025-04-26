@@ -8,17 +8,10 @@ void SetupAccel() {
       Serial.println("Accéléromètre prêt !");
 }
 
-void ReadAccel() {
-    float x, y, z;
-    if (IMU.accelerationAvailable()) {
-    IMU.readAcceleration(x, y, z);  // Lit les valeurs (en g)
-    
-    // Affiche dans le terminal série
-    Serial.print("Accélération (g) => X: ");
-    Serial.print(x);
-    Serial.print(" | Y: ");
-    Serial.print(y);
-    Serial.print(" | Z: ");
-    Serial.println(z);
+bool ReadAccel(float& x, float& y, float& z) {
+  if (IMU.accelerationAvailable()) {
+      IMU.readAcceleration(x, y, z);  // Lit les valeurs (en g)
+      return true; // Lecture réussie
   }
+  return false; // Lecture échouée
 }

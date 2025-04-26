@@ -9,7 +9,7 @@ void BtSetup();
 void BtLoop();
 void BtSend(const char* message);
 void SetupAccel();
-void ReadAccel();
+bool ReadAccel(float& x, float& y, float& z);
 void SetupCapt();
 float ReadCapt(const char * sensor);
 #endif

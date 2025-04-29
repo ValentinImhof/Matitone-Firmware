@@ -77,13 +77,14 @@ void loop()
     digitalWrite(2, LOW); // Éteint la LED IR AV
   }
 
-  if(ReadCapt("AR") > 1) {  // Si la valeur du capteur arrière est supérieure à 1
+  if(ReadCapt("AR") < 1.4) {  // Si la valeur du capteur arrière est supérieure à 1
     Serial.println("Capteur arrière activé");
     digitalWrite(3, HIGH); // Allume la LED IR AR
   }
   else {
     digitalWrite(3, LOW); // Éteint la LED IR AR
   }
+  //Serial.println(ReadCapt("AR"));
 
   if((digitalRead(4) == HIGH) && (S1prev == false)) {  // Si le bouton sur la broche 4 est pressé
     Serial.println("Bouton 1 pressé"); //envoie une fois

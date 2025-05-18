@@ -1,37 +1,60 @@
-#include "matitone.h"
-#include "ArduinoLowPower.h"
+/*Main pour le premier test le 20/05/2025
+par interruption, les boutons envoient un message s'ils sont pressés
+envoi en continu de deux messages différents selon niveau de pression des capts
+led IR respective allumée dès le niveau de pression le plus faible*/
 
-unsigned long previousMillis = 0;
-const unsigned long interval = 100;  // lecture toutes les 100 ms
+#include "matitone.h"
 
 void setup() {
   Serial.begin(9600);
-  SetupAccel();  // initialisation de l'IMU
-  pinMode(LED_BUILTIN, OUTPUT);
-
-  // Désactive le port série quand inactif pour réduire la conso
-  LowPower.attachInterruptWakeup(RTC_ALARM_WAKEUP, []{}, CHANGE);
+  BtSetup();
+  SetupCapt();
+  SetupButtons();
+  
+  pinMode(2, OUTPUT); // LED IR AV
+  pinMode(3, OUTPUT); // LED IR AR
 }
 
 void loop() {
-  unsigned long currentMillis = millis();
-
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-
-    float accelX, accelY, accelZ;
-    if (ReadAccel(accelX, accelY, accelZ)) {
-      if ((accelX > 1.2) || (accelY > 1.2) || (accelZ > 1.2)) {
-        Serial.println("Mouvement détecté");
-        digitalWrite(LED_BUILTIN, HIGH);
-      } else {
-        digitalWrite(LED_BUILTIN, LOW);
-      }
-    } else {
-      digitalWrite(LED_BUILTIN, LOW);
-    }
+  BtLoop();
+  
+  // Gestion capteurs de pression
+  if(ReadCapt("AV") < 1.4) {
+    Serial.println("Capteur avant 1");
+    digitalWrite(2, HIGH);
+    BtSend("AV1");
+  } else if (ReadCapt("VR") < 1){
+    Serial.println("Capteur avant 2");
+    BtSend("AV2");
+  }
+  else {
+    digitalWrite(2, LOW);
   }
 
-  // Mise en veille "léger" entre chaque boucle
-  LowPower.idle();
+  if(ReadCapt("AR") < 1.4) {
+    Serial.println("Capteur arrière 1");
+    digitalWrite(3, HIGH);
+    BtSend("AR1");
+  } else if (ReadCapt("AR") < 1){
+    Serial.println("Capteur arrrière 2");
+    BtSend("AR2");
+  }
+  else {
+    digitalWrite(3, LOW);
+  }
+  
+  // Gestion des boutons directement dans le main
+  if(button1Pressed) {
+    button1Pressed = false;
+    Serial.println("Bouton 1 pressé"); 
+    BtSend("S1");
+  }
+
+  if(button2Pressed) {
+    button2Pressed = false;
+    Serial.println("Bouton 2 pressé");
+    BtSend("S2");
+  }
+
+  delay(10);
 }

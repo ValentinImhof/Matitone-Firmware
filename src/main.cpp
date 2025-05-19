@@ -19,17 +19,18 @@ void loop() {
   BtLoop();
   
   // Gestion capteurs de pression
-  if(ReadCapt("AV") < 1.4) {
+  if (ReadCapt("AV") > 3){
+    Serial.println("Capteur avant 2");
+    BtSend("AV2");
+  } else if(ReadCapt("AV") > 2) {
     Serial.println("Capteur avant 1");
     digitalWrite(2, HIGH);
     BtSend("AV1");
-  } else if (ReadCapt("VR") < 1){
-    Serial.println("Capteur avant 2");
-    BtSend("AV2");
   }
   else {
     digitalWrite(2, LOW);
   }
+  //Serial.println(ReadCapt("AV"));
 
   if(ReadCapt("AR") < 1.4) {
     Serial.println("Capteur arrière 1");
@@ -56,5 +57,5 @@ void loop() {
     BtSend("S2");
   }
 
-  delay(10);
+  delay(300);
 }

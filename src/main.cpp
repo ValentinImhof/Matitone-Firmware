@@ -50,18 +50,29 @@ void loop() {
   //Serial.println(ReadCapt("AV"));
 
   if (ReadCapt("AR") < 1){
-    Serial.println("Capteur arrrière 2");
-    BtSend("AR2");
-  } else if(ReadCapt("AR") < 1.4) {
-    Serial.println("Capteur arrière 1");
+    if (AR2UP == false) {
+      BtSend("AR2UP");
+      Serial.println("AR2UP");
+      AR2UP = true;
+    }
+  } 
+  else{
+    if (AR2UP == true) {
+      BtSend("AR2DOWN");
+      Serial.println("AR2DOWN");
+      AR2UP = false;
+    }
+  }
+  
+  if(ReadCapt("AR") < 1.4) {
+    //Serial.println("Capteur arrière 1");
     digitalWrite(3, HIGH);
-    BtSend("AR1");
   }
   else {
     digitalWrite(3, LOW);
   }
   
-  // Gestion des boutons directement dans le main
+  // Gestion des boutons
   if(button1Pressed) {
     button1Pressed = false;
     Serial.println("Bouton 1 pressé"); 

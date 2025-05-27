@@ -18,5 +18,6 @@ float ReadCapt(const char* sensor);
 void SetupButtons();
 extern volatile bool button1Pressed;
 extern volatile bool button2Pressed;
+extern volatile bool button3Pressed;
 
 #endif

@@ -74,5 +74,11 @@ void loop() {
     BtSend("S2");
   }
 
+  if(button3Pressed) {
+    button3Pressed = false;
+    Serial.println("Bouton 3 pressé");
+    BtSend("S3");
+  }
+
   delay(300);
 }

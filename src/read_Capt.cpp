@@ -11,9 +11,9 @@ float ReadCapt(const char * sensor) {
     float VOUT;
 
     if (strcmp(sensor, "AV") == 0) {
-        val = analogRead(A0);
-    } else if (strcmp(sensor, "AR") == 0) {
         val = analogRead(A1);
+    } else if (strcmp(sensor, "AR") == 0) {
+        val = analogRead(A0);
     } else {
         Serial.println("Capteur non reconnu");
         return 0.0f;

@@ -5,7 +5,7 @@ led IR respective allumée dès le niveau de pression le plus faible*/
 
 #include "matitone.h"
 
-volatile bool AV2UP;
+volatile bool AV2UP; // Variable pour le capteur avant
 volatile bool AR2UP;
 
 void setup() {
@@ -13,66 +13,40 @@ void setup() {
   BtSetup();
   SetupCapt();
   SetupButtons();
-  
   pinMode(2, OUTPUT); // LED IR AV
   pinMode(3, OUTPUT); // LED IR AR
-
-  AV2UP = false;
-  AR2UP = false;
 }
 
 void loop() {
-  BtLoop();
-  
-  // Gestion capteurs de pression
-  if (ReadCapt("AV") > 3){
-    //Serial.println("Capteur avant 2");
-    if (AV2UP == false)  {
-      BtSend("AV2UP");
-      Serial.println("AV2UP");
-      AV2UP = true;
-    }
-  }
-  else{
-    if (AV2UP == true) {
-      BtSend("AV2DOWN");
-      Serial.println("AV2DOWN");
-      AV2UP = false;
-    }
-  }
-  if(ReadCapt("AV") > 2) {
-    //Serial.println("Capteur avant 1");
+  BtLoop(); // Gère les communications Bluetooth
+
+  if (ReadCapt("AV") < 0.85){
+    Serial.println("Capteur avant 2");
+    BtSend("AV2");
+  } else if(ReadCapt("AV") < 0.95) {
+    Serial.println("Capteur avant 1");
     digitalWrite(2, HIGH);
+    BtSend("AV1");
   }
   else {
     digitalWrite(2, LOW);
   }
-  //Serial.println(ReadCapt("AV"));
 
-  if (ReadCapt("AR") < 1){
-    if (AR2UP == false) {
-      BtSend("AR2UP");
-      Serial.println("AR2UP");
-      AR2UP = true;
-    }
-  } 
-  else{
-    if (AR2UP == true) {
-      BtSend("AR2DOWN");
-      Serial.println("AR2DOWN");
-      AR2UP = false;
-    }
-  }
-  
-  if(ReadCapt("AR") < 1.4) {
-    //Serial.println("Capteur arrière 1");
+if (ReadCapt("AR") < 1){
+    Serial.println("Capteur arrière 2");
+    BtSend("AR2");
+  } else if(ReadCapt("AR") < 1.3) {
+    Serial.println("Capteur arrière 1");
     digitalWrite(3, HIGH);
+    BtSend("AR1");
   }
   else {
     digitalWrite(3, LOW);
   }
-  
-  // Gestion des boutons
+
+  Serial.println("AR: " + String(ReadCapt("AR")) + "    AV: " + String(ReadCapt("AV")));
+
+  // Gestion des boutons directement dans le main
   if(button1Pressed) {
     button1Pressed = false;
     Serial.println("Bouton 1 pressé"); 
@@ -91,5 +65,5 @@ void loop() {
     BtSend("S3");
   }
 
-  delay(300);
+  delay(100);
 }

@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <ArduinoBLE.h>
 #include <Arduino_BMI270_BMM150.h>
-#include <ArduinoLowPower.h>
 
 // Déclaration des fonctions Bluetooth
 void BtSetup();
@@ -28,7 +27,7 @@ void SetupAccel();
 bool ReadAccel(float& x, float& y, float& z);
 
 // Configuration pour la Logique de Veille
-const unsigned long INACTIVITY_DURATION_MS = 60000;    // 1 minute (en millisecondes)
+const unsigned long INACTIVITY_DURATION_MS = 10000;    // 1 minute (en millisecondes)
 const unsigned long PERIODIC_SLEEP_INTERVAL_MS = 5000; // 5 secondes (en millisecondes)
 const float ACCEL_WAKE_UP_THRESHOLD = 1.2f;            // Seuil d'accélération (en G) pour le réveil
 const float MOVEMENT_DETECTION_THRESHOLD_DELTA = 0.15f; // Sensibilité pour l'absence de mouvement

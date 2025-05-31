@@ -1,133 +1,80 @@
-/*
- * IMPORTANT : ERREURS DE LINKER PERSISTANTES (undefined reference to LowPower / deepSleep)
- * ---------------------------------------------------------------------------------------
- * Les erreurs "undefined reference to `ArduinoLowPowerClass::deepSleep`" ou "undefined reference to `LowPower`"
- * persistent malgré les vérifications indiquent un problème de liaison (linking) de la bibliothèque
- * ArduinoLowPower avec le cœur Mbed OS de la Nano 33 BLE dans l'environnement PlatformIO.
- * L'éditeur de liens ne trouve pas le code compilé de la bibliothèque.
- *
- * Pistes à explorer :
- * 1. Vérification de `platformio.ini` : Assurez-vous que `lib_deps` contient BIEN :
- * `arduino-libraries/ArduinoLowPower`
- * C'est la référence correcte pour la bibliothèque officielle.
- *
- * 2. Nettoyage en profondeur et Reconstruction :
- * - Utilisez l'option "Clean" de PlatformIO.
- * - Si cela ne suffit pas, essayez de supprimer manuellement le dossier `.pio` à la racine
- * de votre projet, puis laissez PlatformIO tout reconstruire (cela forcera le
- * retéléchargement et la reconstruction de toutes les dépendances).
- *
- * 3. Vérification de l'installation de la bibliothèque :
- * Après une tentative de compilation, inspectez le contenu du dossier
- * `.pio/libdeps/nano33ble/ArduinoLowPower` (ou le nom de votre environnement).
- * Vérifiez que les fichiers sources (.c, .cpp) et les en-têtes (.h) y sont présents.
- * La présence de `mbed` dans les sous-dossiers de la bibliothèque peut indiquer
- * la version compatible Mbed.
- *
- * 4. Version du Core Mbed :
- * Il pourrait y avoir une incompatibilité entre la version du framework `framework-arduino-mbed`
- * utilisée par PlatformIO (visible dans votre log : `framework-arduino-mbed @ 4.2.4`) et
- * la bibliothèque `ArduinoLowPower`. Vérifiez s'il existe des "issues" connues sur les
- * forums de PlatformIO ou d'Arduino concernant cette combinaison.
- *
- * 5. Minimal Test Case :
- * Créez un nouveau projet PlatformIO très simple pour la Nano 33 BLE qui ne fait
- * QU'inclure `<ArduinoLowPower.h>` et appeler `LowPower.deepSleep(1000);` dans le setup.
- * Si cela ne fonctionne pas non plus, cela isole le problème à l'interaction
- * PlatformIO <-> ArduinoLowPower <-> Mbed Core.
- *
- * Le code C++ ci-dessous pour l'utilisation de la bibliothèque est standard.
- * Le problème est très probablement lié à la configuration de l'environnement de build.
+/* Main pour le premier test le 20/05/2025
+ * Simplifié : suppression du Bluetooth, réveil par MOUVEMENT ACCELEROMETRE (delta) uniquement.
+ * La condition de réveil est une différence suffisante entre la lecture actuelle et la précédente.
+ * Supprime l'utilisation de la bibliothèque ArduinoLowPower.
  */
 
-/*Main pour le premier test le 20/05/2025
-par interruption, les boutons envoient un message s'ils sont pressés
-envoi en continu de deux messages différents selon niveau de pression des capts
-led IR respective allumée dès le niveau de pression le plus faible*/
-
-#include "matitone.h"
+#include "matitone.h" // Contient les constantes comme MOVEMENT_DETECTION_THRESHOLD_DELTA
 
 // Définitions pour les variables globales déclarées 'extern' dans matitone.h
-// Ces variables sont maintenant définies ici, dans main.cpp.
 int SleepState;
 unsigned long lastSignificantMovementTime;
 float lastProcessedAccelX, lastProcessedAccelY, lastProcessedAccelZ;
 bool isFirstAccelReadCycle;
 
-// Définitions pour les variables des boutons (doivent correspondre aux déclarations extern dans matitone.h)
-// Si ces variables sont modifiées dans des interruptions, 'volatile' est important.
+// Les variables Bluetooth (AV2UP, AR2UP) et les flags de boutons
+// ne sont plus activement utilisés dans cette version simplifiée pour la logique de veille/réveil,
+// mais sont conservés car déclarés extern dans matitone.h.
 volatile bool AV2UP;
 volatile bool AR2UP;
 
-// Les autres variables globales pour les boutons, si elles existent et sont extern,
-// devraient aussi être définies ici. Par exemple :
-// volatile bool button1Pressed;
-// volatile bool button2Pressed;
-// volatile bool button3Pressed;
-// Assurez-vous que ces définitions correspondent à ce qui est déclaré 'extern' dans matitone.h
-
 void setup() {
-  Serial.begin(9600); // Initialisation de la communication série pour le débogage
+  Serial.begin(9600);
 
-  // Initialisation des différents modules (capteurs, Bluetooth, accéléromètre)
-  SetupCapt();
-  BtSetup();
+  SetupCapt(); // Conservation de la lecture des capteurs pour la logique active
+  // BtSetup(); // Supprimé - Bluetooth non utilisé dans cette version
   SetupAccel();
+  // SetupButtons(); // Supprimé - Les boutons ne sont plus utilisés pour le réveil
 
-  // Initialisation des états des variables de contrôle des LEDs/logique
+  // Initialisation des flags non pertinents pour cette version simplifiée
   AV2UP = false;
   AR2UP = false;
+  button1Pressed = false;
+  button2Pressed = false;
+  button3Pressed = false;
 
-  pinMode(2, OUTPUT); // LED IR AVANT
-  pinMode(3, OUTPUT); // LED IR ARRIERE
-  digitalWrite(2, LOW); // Éteint la LED IR AVANT initialement
-  digitalWrite(3, LOW); // Éteint la LED IR ARRIERE initialement
+  pinMode(2, OUTPUT); // LED IR AV
+  pinMode(3, OUTPUT); // LED IR AR
+  pinMode(8, OUTPUT);
+  digitalWrite(2, LOW); // Éteint la LED IR AV
+  digitalWrite(3, LOW); // Éteint la LED IR AR
 
   SleepState = 0; // Initialisation de l'état de veille à "Actif"
-  lastSignificantMovementTime = millis(); // Initialise le temps du dernier mouvement significatif
+  lastSignificantMovementTime = millis();
 
-  // Lecture initiale de l'accéléromètre pour établir une référence
+  // Lecture initiale de l'accéléromètre pour définir lastProcessedAccelX, Y, Z
   if (ReadAccel(lastProcessedAccelX, lastProcessedAccelY, lastProcessedAccelZ)) {
-    isFirstAccelReadCycle = false; // La première lecture a réussi
+    isFirstAccelReadCycle = false;
   } else {
-    isFirstAccelReadCycle = true; // Marquer qu'il faudra réessayer ou utiliser des valeurs par défaut
-    // Initialiser les valeurs si la lecture échoue pour éviter des comportements indéfinis
-    lastProcessedAccelX = 0.0f;
+    isFirstAccelReadCycle = true;
+    lastProcessedAccelX = 0.0f; // Valeurs par défaut si la lecture échoue
     lastProcessedAccelY = 0.0f;
     lastProcessedAccelZ = 0.0f;
-    Serial.println("Erreur lecture Accel au setup, valeurs par défaut utilisées.");
   }
 }
 
 void loop() {
-  BtLoop(); // Gérer la communication Bluetooth en continu
+  // BtLoop();
 
   if (SleepState == 0) { // ----- MODE ACTIF -----
-    // Optionnel: Indiquer l'état actif avec la LED intégrée
-    // digitalWrite(LED_BUILTIN, HIGH);
+    digitalWrite(8, HIGH); // Allume la LED intégrée pour indiquer le mode actif
 
-    // Logique de contrôle de la LED IR basée sur le capteur de pression AVANT
-    if (ReadCapt("AV") < 0.95) { // Seuil pour allumer la LED
-      digitalWrite(2, HIGH); // Allumer LED IR AVANT
-    } else {
-      digitalWrite(2, LOW);  // Éteindre LED IR AVANT
-    }
-    // Vous pourriez ajouter une logique similaire pour le capteur ARRIERE et la LED 3 si nécessaire
+    // Logique des capteurs de pression pour les LEDs IR (conservée)
+    if (ReadCapt("AV") < 0.95) { digitalWrite(2, HIGH); } else { digitalWrite(2, LOW); }
+    if (ReadCapt("AR") < 0.95) { digitalWrite(3, HIGH); } else { digitalWrite(3, LOW); }
 
-    // Détection de mouvement pour réinitialiser le timer d'inactivité
+
+    // Détection de mouvement pour réinitialiser le timer d'inactivité (conservée)
     float currentAccelX, currentAccelY, currentAccelZ;
     if (ReadAccel(currentAccelX, currentAccelY, currentAccelZ)) {
-      // Calculer la différence absolue par rapport à la dernière lecture traitée
       float deltaX = abs(currentAccelX - lastProcessedAccelX);
       float deltaY = abs(currentAccelY - lastProcessedAccelY);
       float deltaZ = abs(currentAccelZ - lastProcessedAccelZ);
 
-      // Si un mouvement au-delà du seuil est détecté
       if (deltaX > MOVEMENT_DETECTION_THRESHOLD_DELTA ||
           deltaY > MOVEMENT_DETECTION_THRESHOLD_DELTA ||
           deltaZ > MOVEMENT_DETECTION_THRESHOLD_DELTA) {
         lastSignificantMovementTime = millis(); // Mouvement détecté, réinitialiser le timer
-        // Serial.println("Mouvement actif."); // Pour débogage
       }
       // Mettre à jour les valeurs de référence pour la prochaine itération
       lastProcessedAccelX = currentAccelX;
@@ -137,60 +84,62 @@ void loop() {
 
     // Vérifier l'inactivité pour passer en mode veille
     if (millis() - lastSignificantMovementTime > INACTIVITY_DURATION_MS) {
-      Serial.println("Inactivité > 1 min. Passage en veille...");
-      BtSend("Sleep"); // Envoyer un message Bluetooth pour indiquer le passage en veille
-      SleepState = 1;  // Changer l'état pour la veille
+      Serial.println("Inactivité > 1 min. Passage en mode veille...");
+      // BtSend("Sleep"); // Supprimé
+      SleepState = 1;
       
-      digitalWrite(2, LOW); // S'assurer que la LED IR AVANT est éteinte
-      digitalWrite(3, LOW); // S'assurer que la LED IR ARRIERE est éteinte
-      // digitalWrite(LED_BUILTIN, LOW); // Optionnel: éteindre la LED intégrée
-
-      Serial.println("Entrée en deepSleep pour 5s (vérification périodique)...");
-      // Mettre l'Arduino en mode de sommeil profond pour économiser l'énergie
-      LowPower.deepSleep(PERIODIC_SLEEP_INTERVAL_MS); 
-      // Au réveil (par timer ou interruption externe), la loop() reprendra et SleepState sera à 1.
+      digitalWrite(2, LOW); // S'assurer que les LEDs IR sont éteintes
+      digitalWrite(3, LOW);
+      // digitalWrite(LED_BUILTIN, LOW); // Optionnel
+      Serial.println("Entrée en mode veille (attente de delta de mouvement pour réveil).");
+      // lastProcessedAccelX, Y, Z conservent les dernières valeurs du mode actif
+      // pour la première comparaison en mode veille.
     } else {
-      delay(100); // Délai court pendant le mode actif pour ne pas surcharger le processeur
+      // Délai court pendant le mode actif normal
+      delay(100); // Ajustez selon la réactivité souhaitée et autres tâches
     }
 
   } else { // ----- MODE VEILLE (SleepState == 1) -----
-    // L'appareil vient de se réveiller du deepSleep.
-    // Optionnel: S'assurer que la LED intégrée est éteinte
-    // digitalWrite(LED_BUILTIN, LOW);
-    digitalWrite(2, LOW); // S'assurer que la LED IR AVANT est éteinte
-    digitalWrite(3, LOW); // S'assurer que la LED IR ARRIERE est éteinte
+    // En mode veille, on vérifie périodiquement si un mouvement (delta) est détecté.
+    digitalWrite(8, LOW); // Éteint la LED intégrée pour indiquer le mode veille
 
-    Serial.println("Sortie de deepSleep (état veille), vérification mouvement pour réveil...");
-    float accelX, accelY, accelZ;
-    if (ReadAccel(accelX, accelY, accelZ)) {
-      // Vérifier si un mouvement significatif (au-delà du seuil de réveil) justifie le réveil complet
-      if (abs(accelX) > ACCEL_WAKE_UP_THRESHOLD ||
-          abs(accelY) > ACCEL_WAKE_UP_THRESHOLD ||
-          abs(accelZ) > ACCEL_WAKE_UP_THRESHOLD) {
-        
-        Serial.println("Mouvement de réveil détecté ! Passage en mode actif.");
-        BtSend("WakeUp");    // Envoyer un message Bluetooth pour indiquer le réveil
+    float currentSleepAccelX, currentSleepAccelY, currentSleepAccelZ;
+    if (ReadAccel(currentSleepAccelX, currentSleepAccelY, currentSleepAccelZ)) {
+      // Calculer la différence par rapport à la dernière lecture traitée (avant d'entrer en veille ou lors du dernier cycle de veille)
+      float deltaX = abs(currentSleepAccelX - lastProcessedAccelX);
+      float deltaY = abs(currentSleepAccelY - lastProcessedAccelY);
+      float deltaZ = abs(currentSleepAccelZ - lastProcessedAccelZ);
+
+      // MOVEMENT_DETECTION_THRESHOLD_DELTA est défini dans matitone.h (ex: 0.15f)
+      if (deltaX > MOVEMENT_DETECTION_THRESHOLD_DELTA ||
+          deltaY > MOVEMENT_DETECTION_THRESHOLD_DELTA ||
+          deltaZ > MOVEMENT_DETECTION_THRESHOLD_DELTA) {
+        Serial.println("Mouvement de réveil (delta) détecté ! Passage en mode actif.");
+        // BtSend("WakeUp"); // Supprimé
         SleepState = 0;      // Changer l'état en Actif
-
-        // Réinitialiser les références de l'accéléromètre pour la nouvelle période active
-        if (!ReadAccel(lastProcessedAccelX, lastProcessedAccelY, lastProcessedAccelZ)) {
-            // En cas d'échec de lecture, initialiser à zéro pour éviter des problèmes
-            lastProcessedAccelX = 0.0f; 
-            lastProcessedAccelY = 0.0f; 
-            lastProcessedAccelZ = 0.0f;
-            Serial.println("Erreur lecture Accel au réveil, valeurs par défaut utilisées.");
-        }
-        lastSignificantMovementTime = millis(); // Le système est maintenant actif, réinitialiser le timer d'inactivité
-        // La prochaine itération de loop() exécutera la logique du mode Actif.
+        lastSignificantMovementTime = millis(); // Réinitialiser le timer d'inactivité
+        
+        // Mettre à jour lastProcessedAccelX, Y, Z avec les valeurs qui ont causé le réveil,
+        // pour que le mode actif commence avec une référence correcte.
+        lastProcessedAccelX = currentSleepAccelX;
+        lastProcessedAccelY = currentSleepAccelY;
+        lastProcessedAccelZ = currentSleepAccelZ;
+        // La boucle reprendra en mode actif
       } else {
-        // Pas de mouvement suffisant, retourner en deepSleep
-        Serial.println("Aucun mouvement de réveil. Retour en deepSleep pour 5s...");
-        LowPower.deepSleep(PERIODIC_SLEEP_INTERVAL_MS);
+        // Pas de mouvement de réveil. Mettre à jour les valeurs "précédentes" pour la prochaine vérification en mode veille.
+        // Cela garantit que le delta est toujours par rapport à la dernière lecture "stable" en veille.
+        lastProcessedAccelX = currentSleepAccelX;
+        lastProcessedAccelY = currentSleepAccelY;
+        lastProcessedAccelZ = currentSleepAccelZ;
       }
-    } else {
-      // Si la lecture de l'IMU échoue en mode veille, retourner en deepSleep par sécurité
-      Serial.println("Erreur lecture IMU en mode veille. Retour en deepSleep...");
-      LowPower.deepSleep(PERIODIC_SLEEP_INTERVAL_MS);
+    }
+
+    // Si toujours en mode veille (pas de mouvement de réveil détecté ci-dessus)
+    if (SleepState == 1) {
+      // On utilise delay() pour mettre le CPU en sommeil léger et économiser de l'énergie.
+      // La durée de ce delay détermine la fréquence à laquelle on vérifie les conditions de réveil.
+      // Serial.println("En veille, attente du prochain cycle de vérification de mouvement (delta)..."); // Pour debug
+      delay(PERIODIC_SLEEP_INTERVAL_MS); // Ou une valeur plus courte pour plus de réactivité au mouvement
     }
   }
 }

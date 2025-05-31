@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <ArduinoBLE.h>
 #include <Arduino_BMI270_BMM150.h>
+#include <ArduinoLowPower.h>
 
 // Déclaration des fonctions Bluetooth
 void BtSetup();

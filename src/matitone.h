@@ -26,11 +26,15 @@ extern volatile bool AR2UP;
 void SetupAccel();
 bool ReadAccel(float& x, float& y, float& z);
 
+// Déclaration des fonctions pour la lecture du niveau de batterie
+void SetupBatteryLevel(); // À appeler dans le setup() principal
+float ReadBatteryLevel();  // Retourne la tension de la batterie en volts (valeur entière)
+
 // Configuration pour la Logique de Veille
-const unsigned long INACTIVITY_DURATION_MS = 10000;    // 1 minute (en millisecondes)
+const unsigned long INACTIVITY_DURATION_MS = 30000;    // 30 secondes (en millisecondes)
 const unsigned long PERIODIC_SLEEP_INTERVAL_MS = 5000; // 5 secondes (en millisecondes)
-const float ACCEL_WAKE_UP_THRESHOLD = 1.2f;            // Seuil d'accélération (en G) pour le réveil
-const float MOVEMENT_DETECTION_THRESHOLD_DELTA = 0.15f; // Sensibilité pour l'absence de mouvement
+const float ACCEL_WAKE_UP_THRESHOLD = 1.1f;            // Seuil d'accélération (en G) pour le réveil
+const float MOVEMENT_DETECTION_THRESHOLD_DELTA = 0.10f; // Sensibilité pour l'absence de mouvement
 
 // Variables Globales pour la Logique de Veille (déclarées extern)
 extern int SleepState;

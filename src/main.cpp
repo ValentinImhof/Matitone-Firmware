@@ -1,7 +1,5 @@
 /* Main pour le premier test le 20/05/2025
- * Simplifié : suppression du Bluetooth, réveil par MOUVEMENT ACCELEROMETRE (delta) uniquement.
- * La condition de réveil est une différence suffisante entre la lecture actuelle et la précédente.
- * Supprime l'utilisation de la bibliothèque ArduinoLowPower.
+ * 
  */
 
 #include "matitone.h" // Contient les constantes comme MOVEMENT_DETECTION_THRESHOLD_DELTA
@@ -21,12 +19,11 @@ volatile bool AR2UP;
 void setup() {
   Serial.begin(9600);
 
-  SetupCapt(); // Conservation de la lecture des capteurs pour la logique active
-  // BtSetup(); // Supprimé - Bluetooth non utilisé dans cette version
+  SetupCapt();
+  BtSetup();
   SetupAccel();
-  // SetupButtons(); // Supprimé - Les boutons ne sont plus utilisés pour le réveil
+  SetupButtons();
 
-  // Initialisation des flags non pertinents pour cette version simplifiée
   AV2UP = false;
   AR2UP = false;
   button1Pressed = false;
@@ -35,7 +32,9 @@ void setup() {
 
   pinMode(2, OUTPUT); // LED IR AV
   pinMode(3, OUTPUT); // LED IR AR
-  pinMode(8, OUTPUT);
+  pinMode(8, OUTPUT); // LED Rouge
+  pinMode(A3, INPUT); // Lecture du niveau de batterie
+
   digitalWrite(2, LOW); // Éteint la LED IR AV
   digitalWrite(3, LOW); // Éteint la LED IR AR
 
@@ -54,7 +53,7 @@ void setup() {
 }
 
 void loop() {
-  // BtLoop();
+  BtLoop(); // je laisse le BL actif même en veille pour la demo, ensuite on le désactivera
 
   if (SleepState == 0) { // ----- MODE ACTIF -----
     digitalWrite(8, HIGH); // Allume la LED intégrée pour indiquer le mode actif
@@ -63,6 +62,39 @@ void loop() {
     if (ReadCapt("AV") < 0.95) { digitalWrite(2, HIGH); } else { digitalWrite(2, LOW); }
     if (ReadCapt("AR") < 0.95) { digitalWrite(3, HIGH); } else { digitalWrite(3, LOW); }
 
+    // Logique de l'envoi BL si forte pression flanc montant
+    /*if (ReadCapt("AV") > 0.85 && !AV2UP) {
+      AV2UP = true;
+      BtSend("AV2UP");
+      Serial.println("AV2UP envoyé");
+    } else if (AV2UP) {
+      AV2UP = false;
+    }*/
+    if (ReadCapt("AR") > 0.85 && !AR2UP) {
+      AR2UP = true;
+      BtSend("AR2UP");
+      Serial.println("AR2UP envoyé");
+    } else if (AR2UP && ReadCapt("AR") < 0.85) {
+      AR2UP = false;
+      BtSend("AR2DOWN");
+    }
+
+    // Logique des boutons
+    if (button1Pressed) {
+      BtSend("Button1");
+      Serial.println("Button1 envoyé");
+      button1Pressed = false;
+    }
+    if (button2Pressed) {
+      BtSend("Button2");
+      Serial.println("Button2 envoyé");
+      button2Pressed = false;
+    }
+    if (button3Pressed) {
+      BtSend("Button3");
+      Serial.println("Button3 envoyé");
+      button3Pressed = false;
+    }
 
     // Détection de mouvement pour réinitialiser le timer d'inactivité (conservée)
     float currentAccelX, currentAccelY, currentAccelZ;
@@ -84,16 +116,13 @@ void loop() {
 
     // Vérifier l'inactivité pour passer en mode veille
     if (millis() - lastSignificantMovementTime > INACTIVITY_DURATION_MS) {
-      Serial.println("Inactivité > 1 min. Passage en mode veille...");
-      // BtSend("Sleep"); // Supprimé
+      Serial.println("Inactivité > 30s. Passage en mode veille...");
+      BtSend("Sleep");
       SleepState = 1;
       
       digitalWrite(2, LOW); // S'assurer que les LEDs IR sont éteintes
       digitalWrite(3, LOW);
-      // digitalWrite(LED_BUILTIN, LOW); // Optionnel
-      Serial.println("Entrée en mode veille (attente de delta de mouvement pour réveil).");
-      // lastProcessedAccelX, Y, Z conservent les dernières valeurs du mode actif
-      // pour la première comparaison en mode veille.
+
     } else {
       // Délai court pendant le mode actif normal
       delay(100); // Ajustez selon la réactivité souhaitée et autres tâches
@@ -110,24 +139,21 @@ void loop() {
       float deltaY = abs(currentSleepAccelY - lastProcessedAccelY);
       float deltaZ = abs(currentSleepAccelZ - lastProcessedAccelZ);
 
-      // MOVEMENT_DETECTION_THRESHOLD_DELTA est défini dans matitone.h (ex: 0.15f)
       if (deltaX > MOVEMENT_DETECTION_THRESHOLD_DELTA ||
           deltaY > MOVEMENT_DETECTION_THRESHOLD_DELTA ||
           deltaZ > MOVEMENT_DETECTION_THRESHOLD_DELTA) {
         Serial.println("Mouvement de réveil (delta) détecté ! Passage en mode actif.");
-        // BtSend("WakeUp"); // Supprimé
+        BtSend("WakeUp");
         SleepState = 0;      // Changer l'état en Actif
         lastSignificantMovementTime = millis(); // Réinitialiser le timer d'inactivité
         
         // Mettre à jour lastProcessedAccelX, Y, Z avec les valeurs qui ont causé le réveil,
-        // pour que le mode actif commence avec une référence correcte.
         lastProcessedAccelX = currentSleepAccelX;
         lastProcessedAccelY = currentSleepAccelY;
         lastProcessedAccelZ = currentSleepAccelZ;
         // La boucle reprendra en mode actif
       } else {
         // Pas de mouvement de réveil. Mettre à jour les valeurs "précédentes" pour la prochaine vérification en mode veille.
-        // Cela garantit que le delta est toujours par rapport à la dernière lecture "stable" en veille.
         lastProcessedAccelX = currentSleepAccelX;
         lastProcessedAccelY = currentSleepAccelY;
         lastProcessedAccelZ = currentSleepAccelZ;
@@ -137,9 +163,7 @@ void loop() {
     // Si toujours en mode veille (pas de mouvement de réveil détecté ci-dessus)
     if (SleepState == 1) {
       // On utilise delay() pour mettre le CPU en sommeil léger et économiser de l'énergie.
-      // La durée de ce delay détermine la fréquence à laquelle on vérifie les conditions de réveil.
-      // Serial.println("En veille, attente du prochain cycle de vérification de mouvement (delta)..."); // Pour debug
-      delay(PERIODIC_SLEEP_INTERVAL_MS); // Ou une valeur plus courte pour plus de réactivité au mouvement
+      delay(PERIODIC_SLEEP_INTERVAL_MS);
     }
   }
 }

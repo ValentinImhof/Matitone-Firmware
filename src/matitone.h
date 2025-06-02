@@ -19,8 +19,10 @@ void SetupButtons();
 extern volatile bool button1Pressed;
 extern volatile bool button2Pressed;
 extern volatile bool button3Pressed;
-extern volatile bool AV2UP;
-extern volatile bool AR2UP;
+extern volatile bool AV1UP;
+extern volatile bool AR1UP;
+extern volatile bool AV2;
+extern volatile bool AR2;
 
 // Déclaration des fonctions accéléromètre
 void SetupAccel();

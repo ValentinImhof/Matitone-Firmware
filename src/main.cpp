@@ -53,7 +53,7 @@ void setup() {
 }
 
 void loop() {
-  BtLoop(); // je laisse le BL actif même en veille pour la demo, ensuite on le désactivera
+  BtLoop(); // je laisse le BL actif même en veille pour la demo, ensuite on le désactivera ?
 
   if (SleepState == 0) { // ----- MODE ACTIF -----
     digitalWrite(8, HIGH); // Allume la LED intégrée pour indiquer le mode actif

@@ -1,11 +1,10 @@
 #include "matitone.h" 
 
 // Configuration du pont diviseur
-const float VOLTAGE_DIVIDER_R1 = 100000.0;  // Valeur de R1
+const float VOLTAGE_DIVIDER_R1 = 220000.0;  // Valeur de R1
 const float VOLTAGE_DIVIDER_R2 = 220000.0;  // Valeur de R2
 const float ADC_REFERENCE_VOLTAGE = 3.3;
 const float ADC_MAX_READING = 1023.0;
-
 
 void SetupBatteryLevel() {
   pinMode(A2, INPUT);

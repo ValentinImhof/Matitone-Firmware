@@ -18,6 +18,10 @@ volatile bool AR1UP;
 volatile bool AV2;
 volatile bool AR2;
 
+// Variables pour la gestion du niveau de batterie
+static unsigned long lastBatteryCheckTime = 0;
+const unsigned long batteryCheckInterval = 60000; // 1 minute en millisecondes
+
 void setup() {
   Serial.begin(9600);
 
@@ -25,6 +29,7 @@ void setup() {
   BtSetup();
   SetupAccel();
   SetupButtons();
+  SetupBatteryLevel();
 
   AV1UP = false;
   AR1UP = false;
@@ -37,7 +42,6 @@ void setup() {
   pinMode(2, OUTPUT); // LED IR AV
   pinMode(3, OUTPUT); // LED IR AR
   pinMode(8, OUTPUT); // LED Rouge
-  pinMode(A3, INPUT); // Lecture du niveau de batterie
 
   digitalWrite(2, LOW); // Éteint la LED IR AV
   digitalWrite(3, LOW); // Éteint la LED IR AR
@@ -60,22 +64,33 @@ void loop() {
   BtLoop(); // je laisse le BL actif même en veille pour la demo, ensuite on le désactivera ?
 
   if (SleepState == 0) { // ----- MODE ACTIF -----
-    digitalWrite(8, HIGH); // Allume la LED intégrée pour indiquer le mode actif
+    digitalWrite(8, HIGH); // Allume la LED rouge pour indiquer le mode actif (a implémenter)
+
+    // Vérification périodique du niveau de batterie
+    if (millis() - lastBatteryCheckTime >= batteryCheckInterval) {
+      lastBatteryCheckTime = millis();
+      float batteryVoltage = ReadBatteryLevel();
+
+      if (batteryVoltage < 3.3) {
+        BtSend("LowBattery");
+        Serial.println("Alerte : Niveau de batterie bas envoyé via BLE.");
+      }
+    }
 
     // Lire les valeurs des capteurs une seule fois par itération de la boucle principale
     float currentValAV = ReadCapt("AV");
     float currentValAR = ReadCapt("AR");
 
     // --- Capteur AV - Niveau 1 ---
-    // Seuil de pression: currentValAV < 2.0
-    if (currentValAV < 2.0) {
+    // Seuil de pression: currentValAV < 1.55
+    if (currentValAV < 1.55) {
       digitalWrite(2, HIGH); // Allumer la LED IR AV
       if (!AV1UP) {          // Si l'état "pressé Niveau 1" n'était pas déjà actif (flanc montant)
         AV1UP = true;        // Marquer comme actif
         BtSend("AV1UP");
         Serial.println("AV1UP");
       }
-    } else { // currentValAV >= 2.0 (pression relâchée ou non atteinte pour Niveau 1)
+    } else { // currentValAV >= 1.55 (pression relâchée ou non atteinte pour Niveau 1)
       digitalWrite(2, LOW);  // Éteindre la LED IR AV
       if (AV1UP) {           // Si l'état "pressé Niveau 1" était actif (flanc descendant)
         AV1UP = false;       // Marquer comme inactif
@@ -85,15 +100,15 @@ void loop() {
     }
 
     // --- Capteur AR - Niveau 1 ---
-    // Seuil de pression: currentValAR > 2.5 (Attention: suppose que pour AR, une valeur PLUS GRANDE signifie plus de pression)
-    if (currentValAR > 2.5) {
+    // Seuil de pression: currentValAR < 1.82 (Attention: suppose que pour AR, une valeur PLUS GRANDE signifie plus de pression)
+    if (currentValAR < 1.82) {
       digitalWrite(3, HIGH); // Allumer la LED IR AR
       if (!AR1UP) {          // Si l'état "pressé Niveau 1" n'était pas déjà actif (flanc montant)
         AR1UP = true;        // Marquer comme actif
         BtSend("AR1UP");
         Serial.println("AR1UP");
       }
-    } else { // currentValAR <= 2.5 (pression relâchée ou non atteinte pour Niveau 1)
+    } else { // currentValAR >= 1.82 (pression relâchée ou non atteinte pour Niveau 1)
       digitalWrite(3, LOW);  // Éteindre la LED IR AR
       if (AR1UP) {           // Si l'état "pressé Niveau 1" était actif (flanc descendant)
         AR1UP = false;       // Marquer comme inactif
@@ -103,30 +118,30 @@ void loop() {
     }
 
     // --- Capteur AV - Niveau 2 (Pression Forte) ---
-    // Seuil de pression: currentValAV < 1.4
-    if (currentValAV < 1.4) {
+    // Seuil de pression: currentValAV < 1.45
+    if (currentValAV < 1.45) {
       if (!AV2) {            // Si l'état "pressé Niveau 2" n'était pas déjà actif (flanc montant)
         AV2 = true;          // Marquer comme actif
         BtSend("AV2");
         Serial.println("AV2");
       }
-    } else { // currentValAV >= 1.4 (pression relâchée ou non atteinte pour Niveau 2)
+    } else { // currentValAV >= 1.45 (pression relâchée ou non atteinte pour Niveau 2)
       if (AV2) {             // Si l'état "pressé Niveau 2" était actif
-        AV2 = false;         // Réinitialiser l'indicateur (pas de message "DOWN" ici, comme demandé)
+        AV2 = false;         // Réinitialiser l'indicateur (pas de message "DOWN" ici)
       }
     }
 
     // --- Capteur AR - Niveau 2 (Pression Forte) ---
-    // Seuil de pression: currentValAR > 3.0 (Attention: suppose que pour AR, une valeur PLUS GRANDE signifie plus de pression)
-    if (currentValAR > 3.0) {
+    // Seuil de pression: currentValAR < 1.78 (Attention: pour AR, une valeur PLUS GRANDE signifie plus de pression)
+    if (currentValAR < 1.78) {
       if (!AR2) {            // Si l'état "pressé Niveau 2" n'était pas déjà actif (flanc montant)
         AR2 = true;          // Marquer comme actif
         BtSend("AR2");
         Serial.println("AR2");
       }
-    } else { // currentValAR <= 3.0 (pression relâchée ou non atteinte pour Niveau 2)
+    } else { // currentValAR >= 1.78 (pression relâchée ou non atteinte pour Niveau 2)
       if (AR2) {             // Si l'état "pressé Niveau 2" était actif
-        AR2 = false;         // Réinitialiser l'indicateur (pas de message "DOWN" ici, comme demandé)
+        AR2 = false;         // Réinitialiser l'indicateur (pas de message "DOWN" ici)
       }
     }
 
@@ -135,6 +150,7 @@ void loop() {
     Serial.print(currentValAV);
     Serial.print(" | AR: ");
     Serial.println(currentValAR);
+
     // Logique des boutons
     if (button1Pressed) {
       BtSend("Button1");
@@ -172,7 +188,7 @@ void loop() {
 
     // Vérifier l'inactivité pour passer en mode veille
     if (millis() - lastSignificantMovementTime > INACTIVITY_DURATION_MS) {
-      Serial.println("Inactivité > 30s. Passage en mode veille...");
+      Serial.println("Inactivité > 1min. Passage en mode veille...");
       BtSend("Sleep");
       SleepState = 1;
       

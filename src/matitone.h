@@ -33,7 +33,7 @@ void SetupBatteryLevel(); // À appeler dans le setup() principal
 float ReadBatteryLevel();  // Retourne la tension de la batterie en volts (valeur entière)
 
 // Configuration pour la Logique de Veille
-const unsigned long INACTIVITY_DURATION_MS = 45000;    // 45 secondes (en millisecondes)
+const unsigned long INACTIVITY_DURATION_MS = 60000;    // 60 secondes (en millisecondes)
 const unsigned long PERIODIC_SLEEP_INTERVAL_MS = 5000; // 5 secondes (en millisecondes)
 const float ACCEL_WAKE_UP_THRESHOLD = 1.1f;            // Seuil d'accélération (en G) pour le réveil
 const float MOVEMENT_DETECTION_THRESHOLD_DELTA = 0.10f; // Sensibilité pour l'absence de mouvement

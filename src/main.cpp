@@ -1,5 +1,7 @@
-/* Main pour le premier test le 20/05/2025
- * 
+/* Main pour la demonstration de finale
+ * 03/06/2025
+ * Auteur : Valentin Imhof
+ * Email : valentin.imhof@heig-vd.ch
  */
 
 #include "matitone.h" // Contient les constantes comme MOVEMENT_DETECTION_THRESHOLD_DELTA
@@ -61,10 +63,9 @@ void setup() {
 }
 
 void loop() {
-  BtLoop(); // je laisse le BL actif même en veille pour la demo, ensuite on le désactivera ?
+  BtLoop(); // BL actif même en veille
 
   if (SleepState == 0) { // ----- MODE ACTIF -----
-    digitalWrite(8, HIGH); // Allume la LED rouge pour indiquer le mode actif (a implémenter)
 
     // Vérification périodique du niveau de batterie
     if (millis() - lastBatteryCheckTime >= batteryCheckInterval) {
@@ -100,7 +101,7 @@ void loop() {
     }
 
     // --- Capteur AR - Niveau 1 ---
-    // Seuil de pression: currentValAR < 1.82 (Attention: suppose que pour AR, une valeur PLUS GRANDE signifie plus de pression)
+    // Seuil de pression: currentValAR < 1.82
     if (currentValAR < 1.82) {
       digitalWrite(3, HIGH); // Allumer la LED IR AR
       if (!AR1UP) {          // Si l'état "pressé Niveau 1" n'était pas déjà actif (flanc montant)
@@ -132,7 +133,7 @@ void loop() {
     }
 
     // --- Capteur AR - Niveau 2 (Pression Forte) ---
-    // Seuil de pression: currentValAR < 1.78 (Attention: pour AR, une valeur PLUS GRANDE signifie plus de pression)
+    // Seuil de pression: currentValAR < 1.78
     if (currentValAR < 1.78) {
       if (!AR2) {            // Si l'état "pressé Niveau 2" n'était pas déjà actif (flanc montant)
         AR2 = true;          // Marquer comme actif
@@ -145,7 +146,7 @@ void loop() {
       }
     }
 
-    // Affichage des valeurs lues (comme dans votre code original)
+    // Affichage des valeurs lues pour ajustement des paliers de pression
     Serial.print("AV: ");
     Serial.print(currentValAV);
     Serial.print(" | AR: ");
@@ -168,7 +169,7 @@ void loop() {
       button3Pressed = false;
     }
 
-    // Détection de mouvement pour réinitialiser le timer d'inactivité (conservée)
+    // Détection de mouvement pour réinitialiser le timer d'inactivité
     float currentAccelX, currentAccelY, currentAccelZ;
     if (ReadAccel(currentAccelX, currentAccelY, currentAccelZ)) {
       float deltaX = abs(currentAccelX - lastProcessedAccelX);
@@ -202,7 +203,6 @@ void loop() {
 
   } else { // ----- MODE VEILLE (SleepState == 1) -----
     // En mode veille, on vérifie périodiquement si un mouvement (delta) est détecté.
-    digitalWrite(8, LOW); // Éteint la LED intégrée pour indiquer le mode veille
 
     float currentSleepAccelX, currentSleepAccelY, currentSleepAccelZ;
     if (ReadAccel(currentSleepAccelX, currentSleepAccelY, currentSleepAccelZ)) {
